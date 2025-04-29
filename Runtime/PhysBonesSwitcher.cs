@@ -4,7 +4,7 @@ using VRC.SDKBase;
 namespace MitarashiDango.PhysBonesSwitcher.Runtime
 {
     [DisallowMultipleComponent]
-    [AddComponentMenu("MitarashiDango AvatarUtils/Phys Bones Switcher")]
+    [AddComponentMenu("PhysBones Switcher/PhysBones Switcher")]
     public class PhysBonesSwitcher : MonoBehaviour, IEditorOnly
     {
     }
