@@ -4,9 +4,6 @@
   "displayName": "PhysBones Switcher",
   "description": "アバターのPhysBoneを動的にオンオフするメニューを生やすモジュール",
   "unity": "2022.3",
-  "documentationUrl": "",
-  "changelogUrl": "",
-  "licensesUrl": "",
   "vpmDependencies": {
     "com.vrchat.avatars": ">=3.7.6",
     "nadena.dev.ndmf": ">=1.7.9",
