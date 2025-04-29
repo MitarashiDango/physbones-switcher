@@ -1,0 +1,21 @@
+{
+  "name": "com.matcha-soft.physbones-switcher",
+  "version": "1.0.0",
+  "displayName": "PhysBones Switcher",
+  "description": "アバターのPhysBoneを動的にオンオフするメニューを生やすモジュール",
+  "unity": "2022.3",
+  "documentationUrl": "",
+  "changelogUrl": "",
+  "licensesUrl": "",
+  "vpmDependencies": {
+    "com.vrchat.avatars": ">=3.7.6",
+    "nadena.dev.ndmf": ">=1.7.9",
+    "nadena.dev.modular-avatar": ">=1.12.5"
+  },
+  "keywords": [],
+  "author": {
+    "name": "MitarashiDango",
+    "email": "mitarashi_dango@mail.matcha-soft.com",
+    "url": "https://matcha-soft.com"
+  }
+}
