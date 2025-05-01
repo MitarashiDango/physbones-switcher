@@ -16,6 +16,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
         private static readonly string LayerNamePbsPhysBonesSwitcher = "PBS_PHYS_BONES_SWITCHER";
         private static readonly string StateNamePhysBonesON = "PhysBones_ON";
         private static readonly string StateNamePhysBonesOFF = "PhysBones_OFF";
+        private static readonly string EditorOnly = "EditorOnly";
 
         public void GeneratingProcess(BuildContext ctx)
         {
@@ -27,6 +28,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 return;
             }
 
+            state.excludeObjectSettings = physBonesSwitcher.excludeObjectSettings;
 #if AVATAR_OPTIMIZER
             state.NeedOptimizingPhaseProcessing = true;
 #endif
@@ -233,9 +235,36 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             return animatorController;
         }
 
+        private List<GameObject> FilterExcludeObjects(BuildContext ctx, List<GameObject> sourceObjects)
+        {
+            if (sourceObjects.Count == 0)
+            {
+                return sourceObjects;
+            }
+
+            var state = ctx.GetState<PhysBonesSwitcherState>();
+            var excludeObjectSettings = state.excludeObjectSettings.Where(eos => eos != null && eos.excludeObject != null).ToList();
+
+            // タグが "EditorOnly" であるオブジェクトを除外
+            var filterdObjects = sourceObjects.Where(obj => obj.tag != EditorOnly);
+
+            // 直接指定されているオブジェクトを除外
+            filterdObjects = sourceObjects.Where(
+                obj => !excludeObjectSettings.Exists(eos => eos.excludeObject == obj));
+
+            // 子オブジェクトも除外対象とするオブジェクトの子オブジェクトを除外
+            filterdObjects = filterdObjects.Where(
+                obj => !excludeObjectSettings.Where(eos => eos.withChildren)
+                    .Select(eos => eos.excludeObject)
+                    .ToList()
+                    .Exists(src => obj.transform.IsChildOf(src.transform)));
+
+            return filterdObjects.ToList();
+        }
+
         private void OptimizeVRCPhysBones(BuildContext ctx)
         {
-            var gameObjects = GetGameObjectsWithVRCPhysBone(ctx.AvatarRootObject);
+            var gameObjects = FilterExcludeObjects(ctx, GetGameObjectsWithVRCPhysBone(ctx.AvatarRootObject));
             if (gameObjects.Count == 0)
             {
                 return;
@@ -334,8 +363,9 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
 
             var physBonesAttachedObjects = vrcPhysBones
                 .Select(vrcPhysBone => vrcPhysBone.gameObject)
-                .Distinct()
-                .ToArray();
+                .Distinct();
+
+            physBonesAttachedObjects = FilterExcludeObjects(ctx, physBonesAttachedObjects.ToList());
 
             foreach (var physBonesAttachedObject in physBonesAttachedObjects)
             {
