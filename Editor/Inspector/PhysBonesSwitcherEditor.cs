@@ -1,23 +1,61 @@
+using nadena.dev.ndmf.localization;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace MitarashiDango.PhysBonesSwitcher.Editor
 {
     [DisallowMultipleComponent, CustomEditor(typeof(Runtime.PhysBonesSwitcher))]
     public class PhysBonesSwitcherEditor : UnityEditor.Editor
     {
-        public override void OnInspectorGUI()
+        public override VisualElement CreateInspectorGUI()
         {
-            serializedObject.Update();
+            var root = new VisualElement();
 
-            EditorGUILayout.HelpBox("本コンポーネントには設定項目はありません", MessageType.Info);
+            LanguagePrefs.ApplyFontPreferences(root);
 
-            if (EditorApplication.isPlaying)
+            root.Add(CreateExcludeObjectSettingsListView());
+
+            return root;
+        }
+
+        private ListView CreateExcludeObjectSettingsListView()
+        {
+            return new ListView
             {
-                return;
-            }
+                bindingPath = "excludeObjectSettings",
+                reorderMode = ListViewReorderMode.Animated,
+                showAddRemoveFooter = true,
+                showBorder = true,
+                showFoldoutHeader = true,
+                reorderable = true,
+                headerTitle = "操作対象外オブジェクト情報",
+                virtualizationMethod = CollectionVirtualizationMethod.DynamicHeight,
+                makeItem = () =>
+                {
+                    var container = new BindableElement { style = { flexDirection = FlexDirection.Column } };
 
-            serializedObject.ApplyModifiedProperties();
+                    var objectField = new ObjectField
+                    {
+                        name = "ExcludeObject",
+                        bindingPath = "excludeObject",
+                        style = { flexGrow = 1 }
+                    };
+                    container.Add(objectField);
+
+                    var toggle = new Toggle
+                    {
+                        name = "WithChildren",
+                        bindingPath = "withChildren",
+                        text = "子オブジェクトも対象とする",
+                        style = { width = 180 }
+                    };
+                    container.Add(toggle);
+
+                    return container;
+                }
+            };
         }
     }
 }
