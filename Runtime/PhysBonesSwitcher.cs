@@ -10,5 +10,11 @@ namespace MitarashiDango.PhysBonesSwitcher.Runtime
     {
         [SerializeField]
         public List<ExcludeObjectSetting> excludeObjectSettings = new List<ExcludeObjectSetting>();
+
+        [SerializeField]
+        public int customDelayTime = 0;
+
+        [SerializeField]
+        public AudioClip physBoneOffAudioClip = null;
     }
 }
