@@ -5,17 +5,23 @@ using nadena.dev.ndmf;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VRC.SDK3.Dynamics.PhysBone.Components;
+using VRC.SDKBase;
 using static VRC.SDK3.Avatars.Components.VRCAvatarDescriptor;
 
 namespace MitarashiDango.PhysBonesSwitcher.Editor
 {
     public class PhysBonesSwitcherProcessor
     {
+        private static readonly string LayerNamePbsPhysBoneOffParamController = "PBS_PHYS_BONES_OFF_PARAM_CONTROLLER";
         private static readonly string LayerNamePbsPhysBonesSwitcher = "PBS_PHYS_BONES_SWITCHER";
+        private static readonly string LayerNamePbsPhysBoneDisableSound = "PBS_PHYS_BONES_DISABLE_SOUND";
         private static readonly string StateNamePhysBonesON = "PhysBones_ON";
         private static readonly string StateNamePhysBonesOFF = "PhysBones_OFF";
+        private static readonly string StateNamePhysBoneDisableSoundON = "PhysBoneDisableSound_ON";
+        private static readonly string StateNamePhysBoneDisableSoundOFF = "PhysBoneDisableSound_OFF";
         private static readonly string EditorOnly = "EditorOnly";
 
         public void GeneratingProcess(BuildContext ctx)
@@ -29,17 +35,27 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             }
 
             state.excludeObjectSettings = physBonesSwitcher.excludeObjectSettings;
+            state.customDelayTime = physBonesSwitcher.customDelayTime;
+            state.physBoneOffAudioClip = physBonesSwitcher.physBoneOffAudioClip;
 #if AVATAR_OPTIMIZER
             state.NeedOptimizingPhaseProcessing = true;
 #endif
 
+            var physBonesSwitcherGameObject = CreatePhysBonesSwitcherGameObject(ctx);
+            var physBoneOffAudioSourceGameObject = AddPhysBoneDisableAudioSource(ctx, physBonesSwitcherGameObject);
+
             AddParameters(physBonesSwitcher);
-            AddMenuItems(physBonesSwitcher);
+            AddMenuItems(ctx, physBonesSwitcher);
 
             OptimizeVRCPhysBones(ctx);
 
             var animatorController = GeneratePhysBonesSwitcherAnimatorController();
+            animatorController.AddLayer(GeneratePhysBoneOffParamControllerLayer(ctx, physBonesSwitcherGameObject));
             animatorController.AddLayer(GeneratePhysBonesSwitcherLayer(ctx));
+            if (physBoneOffAudioSourceGameObject != null)
+            {
+                animatorController.AddLayer(GeneratePhysBoneDisableSoundLayer(ctx, physBoneOffAudioSourceGameObject));
+            }
 
             var mergeAnimator = physBonesSwitcher.gameObject.AddComponent<ModularAvatarMergeAnimator>();
             mergeAnimator.animator = animatorController;
@@ -169,31 +185,6 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             }
         }
 
-        public void Run(BuildContext ctx)
-        {
-            var physBonesSwitcher = ctx.AvatarRootObject.GetComponentInChildren<Runtime.PhysBonesSwitcher>();
-            if (physBonesSwitcher == null)
-            {
-                return;
-            }
-
-            AddParameters(physBonesSwitcher);
-            AddMenuItems(physBonesSwitcher);
-
-            OptimizeVRCPhysBones(ctx);
-
-            var animatorController = GeneratePhysBonesSwitcherAnimatorController();
-            animatorController.AddLayer(GeneratePhysBonesSwitcherLayer(ctx));
-
-            var mergeAnimator = physBonesSwitcher.gameObject.AddComponent<ModularAvatarMergeAnimator>();
-            mergeAnimator.animator = animatorController;
-            mergeAnimator.layerType = AnimLayerType.FX;
-            mergeAnimator.pathMode = MergeAnimatorPathMode.Absolute;
-            mergeAnimator.matchAvatarWriteDefaults = true;
-
-            Object.DestroyImmediate(physBonesSwitcher);
-        }
-
         private void AddParameters(Runtime.PhysBonesSwitcher physBonesSwitcher)
         {
             var parameters = new PhysBonesSwitcherParameters();
@@ -201,16 +192,87 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             modularAvatarParameters.parameters = parameters.GetParameterConfigs();
         }
 
-        private void AddMenuItems(Runtime.PhysBonesSwitcher physBonesSwitcher)
+        private void AddMenuItems(BuildContext ctx, Runtime.PhysBonesSwitcher physBonesSwitcher)
         {
-            var modularAvatarMenuItem = physBonesSwitcher.gameObject.AddComponent<ModularAvatarMenuItem>();
+            var menuItem = physBonesSwitcher.gameObject.AddComponent<ModularAvatarMenuItem>();
 
-            modularAvatarMenuItem.Control.type = VRCExpressionsMenu.Control.ControlType.Toggle;
-            modularAvatarMenuItem.Control.parameter = new VRCExpressionsMenu.Control.Parameter
+            menuItem.Control.type = VRCExpressionsMenu.Control.ControlType.SubMenu;
+            menuItem.MenuSource = SubmenuSource.Children;
+
+            AddTogglePhysBonesMenuItem(physBonesSwitcher.gameObject);
+            AddDelaySettingsSubMenuItem(ctx, physBonesSwitcher.gameObject);
+        }
+
+        private GameObject AddTogglePhysBonesMenuItem(GameObject parentObject)
+        {
+            var go = new GameObject("PhysBones OFF");
+
+            var menuItem = go.AddComponent<ModularAvatarMenuItem>();
+            menuItem.Control.type = VRCExpressionsMenu.Control.ControlType.Toggle;
+            menuItem.Control.parameter = new VRCExpressionsMenu.Control.Parameter
             {
-                name = PhysBonesSwitcherParameters.PhysBonesOff,
+                name = PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn,
             };
-            modularAvatarMenuItem.Control.value = 1;
+            menuItem.Control.value = 1;
+
+            go.transform.SetParent(parentObject.transform);
+
+            return go;
+        }
+
+        private GameObject AddDelaySettingsSubMenuItem(BuildContext ctx, GameObject parentObject)
+        {
+            var state = ctx.GetState<PhysBonesSwitcherState>();
+            var delaySettingsGameObject = new GameObject("Delay Settings");
+
+            var delaySettingsMenuItem = delaySettingsGameObject.AddComponent<ModularAvatarMenuItem>();
+            delaySettingsMenuItem.Control.type = VRCExpressionsMenu.Control.ControlType.SubMenu;
+            delaySettingsMenuItem.MenuSource = SubmenuSource.Children;
+
+            delaySettingsGameObject.transform.SetParent(parentObject.transform);
+
+            var choices = GetDelayOptionChoices(state.customDelayTime);
+
+            // 遅延設定用メニュー項目生成 (即時モード)
+            var immediateMenuGameObject = new GameObject("Immediate");
+            var immediateMenuItem = immediateMenuGameObject.AddComponent<ModularAvatarMenuItem>();
+            immediateMenuItem.Control.type = VRCExpressionsMenu.Control.ControlType.Toggle;
+            immediateMenuItem.Control.parameter = new VRCExpressionsMenu.Control.Parameter
+            {
+                name = PhysBonesSwitcherParameters.DelayType,
+            };
+            immediateMenuItem.Control.value = 0;
+            immediateMenuGameObject.transform.SetParent(delaySettingsGameObject.transform);
+
+            // 遅延設定用メニュー項目生成 (遅延モード)
+            foreach (var (choice, index) in choices.Select((choice, index) => (choice, index)))
+            {
+                var toggleMenuGameObject = new GameObject($"{choice} sec");
+                var toggleMenuItem = toggleMenuGameObject.AddComponent<ModularAvatarMenuItem>();
+                toggleMenuItem.Control.type = VRCExpressionsMenu.Control.ControlType.Toggle;
+                toggleMenuItem.Control.parameter = new VRCExpressionsMenu.Control.Parameter
+                {
+                    name = PhysBonesSwitcherParameters.DelayType,
+                };
+                toggleMenuItem.Control.value = index + 1;
+
+                toggleMenuGameObject.transform.SetParent(delaySettingsGameObject.transform);
+            }
+
+            return delaySettingsGameObject;
+        }
+
+        private List<int> GetDelayOptionChoices(int customDelayTime)
+        {
+            var choices = new List<int> { 1, 3, 5 };
+            if (customDelayTime > 0 && !choices.Exists(c => c == customDelayTime))
+            {
+                choices.Add(customDelayTime);
+            }
+
+            choices.Sort((a, b) => a - b);
+
+            return choices;
         }
 
         private AnimatorController GeneratePhysBonesSwitcherAnimatorController()
@@ -220,7 +282,22 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 name = "PHYS_BONES_SWITCHER_ANIMATOR_CONTROLLER",
                 parameters = new AnimatorControllerParameter[]{
                     new AnimatorControllerParameter{
+                        name = PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn,
+                        type = AnimatorControllerParameterType.Bool,
+                        defaultBool = false,
+                    },
+                    new AnimatorControllerParameter{
                         name = PhysBonesSwitcherParameters.PhysBonesOff,
+                        type = AnimatorControllerParameterType.Bool,
+                        defaultBool = false,
+                    },
+                    new AnimatorControllerParameter{
+                        name = PhysBonesSwitcherParameters.DelayType,
+                        type = AnimatorControllerParameterType.Int,
+                        defaultInt = 0,
+                    },
+                    new AnimatorControllerParameter{
+                        name = VRCParameters.IS_LOCAL,
                         type = AnimatorControllerParameterType.Bool,
                         defaultBool = false,
                     },
@@ -340,6 +417,43 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 .ToList();
         }
 
+        private GameObject CreatePhysBonesSwitcherGameObject(BuildContext ctx)
+        {
+            var go = new GameObject("$$PhysBonesSwitcher");
+            go.transform.SetParent(ctx.AvatarRootTransform);
+            return go;
+        }
+
+        private GameObject AddPhysBoneDisableAudioSource(BuildContext ctx, GameObject parentObject)
+        {
+            var state = ctx.GetState<PhysBonesSwitcherState>();
+            if (state.physBoneOffAudioClip == null)
+            {
+                return null;
+            }
+
+            var go = new GameObject("$$PhysBoneOffAudioSource");
+            go.SetActive(false);
+
+            go.transform.SetParent(parentObject.transform);
+
+            var audioSource = go.AddComponent<AudioSource>();
+            audioSource.playOnAwake = true;
+            audioSource.clip = state.physBoneOffAudioClip;
+            audioSource.dopplerLevel = 0;
+            audioSource.spread = 0;
+            audioSource.volume = 1;
+
+            var vrcSpatialAudioSource = go.AddComponent<VRCSpatialAudioSource>();
+            vrcSpatialAudioSource.Gain = 10;
+            vrcSpatialAudioSource.Far = 40;
+            vrcSpatialAudioSource.Near = 0;
+            vrcSpatialAudioSource.VolumetricRadius = 0;
+            vrcSpatialAudioSource.EnableSpatialization = false;
+
+            return go;
+        }
+
         private (AnimationClip, AnimationClip, AnimationClip) GenerateAnimationClips(BuildContext ctx)
         {
             var vrcPhysBones = ctx.AvatarRootObject.GetComponentsInChildren<VRCPhysBone>();
@@ -384,6 +498,123 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             return (blankAnimationClip, toEnableAnimationClip, toDisableAnimationClip);
         }
 
+        private AnimatorControllerLayer GeneratePhysBoneOffParamControllerLayer(BuildContext ctx, GameObject physBonesSwitcherGameObject)
+        {
+            var state = ctx.GetState<PhysBonesSwitcherState>();
+
+            var layer = new AnimatorControllerLayer
+            {
+                name = LayerNamePbsPhysBoneOffParamController,
+                defaultWeight = 1,
+                stateMachine = new AnimatorStateMachine(),
+            };
+
+            layer.stateMachine.entryPosition = new Vector3(0, 0, 0);
+            layer.stateMachine.exitPosition = new Vector3(0, -40, 0);
+            layer.stateMachine.anyStatePosition = new Vector3(0, -80, 0);
+
+            var blankAnimationClip = new AnimationClip
+            {
+                name = "blank"
+            };
+
+            var initialState = layer.stateMachine.AddState("Initial State", new Vector3(-20, 60, 0));
+            initialState.writeDefaultValues = false;
+            initialState.motion = blankAnimationClip;
+
+            var setPhysBoneOnState = layer.stateMachine.AddState("Set PhysBone ON", new Vector3(220, 60, 0));
+            setPhysBoneOnState.writeDefaultValues = false;
+            setPhysBoneOnState.motion = blankAnimationClip;
+            setPhysBoneOnState.behaviours = new StateMachineBehaviour[]
+            {
+                GenerateVRCAvatarParameterLocalSetDriver(PhysBonesSwitcherParameters.PhysBonesOff, 0)
+            };
+
+            AnimatorTransitionUtil.AddTransition(initialState, setPhysBoneOnState)
+                .If(VRCParameters.IS_LOCAL)
+                .IfNot(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)
+                .SetImmediateTransitionSettings();
+
+            AnimatorTransitionUtil.AddTransition(initialState, setPhysBoneOnState)
+                .If(VRCParameters.IS_LOCAL)
+                .IfNot(PhysBonesSwitcherParameters.PhysBonesOff)
+                .SetImmediateTransitionSettings();
+
+            var setPhysBoneOffState = layer.stateMachine.AddState("Set PhysBone OFF", new Vector3(-20, 140, 0));
+            setPhysBoneOffState.writeDefaultValues = false;
+            setPhysBoneOffState.motion = blankAnimationClip;
+            setPhysBoneOffState.behaviours = new StateMachineBehaviour[]
+            {
+                GenerateVRCAvatarParameterLocalSetDriver(PhysBonesSwitcherParameters.PhysBonesOff, 1)
+            };
+
+            AnimatorTransitionUtil.AddTransition(initialState, setPhysBoneOffState)
+                .If(VRCParameters.IS_LOCAL)
+                .If(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)
+                .SetImmediateTransitionSettings();
+
+            AnimatorTransitionUtil.AddTransition(initialState, setPhysBoneOffState)
+                .If(VRCParameters.IS_LOCAL)
+                .If(PhysBonesSwitcherParameters.PhysBonesOff)
+                .SetImmediateTransitionSettings();
+
+            AnimatorTransitionUtil.AddTransition(setPhysBoneOnState, setPhysBoneOffState)
+                .If(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)
+                .Equals(PhysBonesSwitcherParameters.DelayType, 0)
+                .SetImmediateTransitionSettings();
+
+            AnimatorTransitionUtil.AddTransition(setPhysBoneOffState, setPhysBoneOnState)
+                .IfNot(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)
+                .SetImmediateTransitionSettings();
+
+            var sleepAnimationClip = new AnimationClip
+            {
+                frameRate = 60, // 60fps
+            };
+            var dummyBinding = EditorCurveBinding.FloatCurve(physBonesSwitcherGameObject.name, typeof(Transform), "m_LocalPosition.x");
+            var dummyCurve = AnimationCurve.Constant(0, 1, 0); // 値0を1秒間維持
+            AnimationUtility.SetEditorCurve(sleepAnimationClip, dummyBinding, dummyCurve);
+
+            var sleepState = layer.stateMachine.AddState("Sleep", new Vector3(220, 140, 0));
+            sleepState.writeDefaultValues = false;
+            sleepState.motion = sleepAnimationClip;
+
+            AnimatorTransitionUtil.AddTransition(setPhysBoneOnState, sleepState)
+                .If(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)
+                .NotEqual(PhysBonesSwitcherParameters.DelayType, 0)
+                .SetImmediateTransitionSettings();
+
+            AnimatorTransitionUtil.AddTransition(sleepState, setPhysBoneOffState)
+                .If(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)
+                .Equals(PhysBonesSwitcherParameters.DelayType, 0)
+                .SetImmediateTransitionSettings();
+
+            AnimatorTransitionUtil.AddTransition(sleepState, setPhysBoneOnState)
+                .IfNot(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)
+                .SetImmediateTransitionSettings();
+
+            var choices = GetDelayOptionChoices(state.customDelayTime);
+            foreach (var (choice, index) in choices.Select((c, i) => (c, i)))
+            {
+                AnimatorTransitionUtil.AddTransition(sleepState, setPhysBoneOffState)
+                    .If(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)
+                    .Equals(PhysBonesSwitcherParameters.DelayType, index + 1)
+                    .Exec((builder) =>
+                    {
+                        var transition = builder.Transition;
+                        transition.hasExitTime = true;
+                        transition.exitTime = choice;
+                        transition.hasFixedDuration = true;
+                        transition.duration = 0;
+                        transition.offset = 0;
+                        transition.interruptionSource = TransitionInterruptionSource.None;
+                        transition.orderedInterruption = true;
+                    });
+            }
+
+            return layer;
+        }
+
         private AnimatorControllerLayer GeneratePhysBonesSwitcherLayer(BuildContext ctx)
         {
             var layer = new AnimatorControllerLayer
@@ -426,6 +657,101 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 .SetImmediateTransitionSettings();
 
             return layer;
+        }
+
+        private AnimatorControllerLayer GeneratePhysBoneDisableSoundLayer(BuildContext ctx, GameObject physBoneOffAudioSourceGameObject)
+        {
+            var state = ctx.GetState<PhysBonesSwitcherState>();
+            if (state.physBoneOffAudioClip == null)
+            {
+                return null;
+            }
+
+            var layer = new AnimatorControllerLayer
+            {
+                name = LayerNamePbsPhysBoneDisableSound,
+                defaultWeight = 1,
+                stateMachine = new AnimatorStateMachine(),
+            };
+
+            layer.stateMachine.entryPosition = new Vector3(0, 0, 0);
+            layer.stateMachine.exitPosition = new Vector3(0, -40, 0);
+            layer.stateMachine.anyStatePosition = new Vector3(0, -80, 0);
+
+            var blankAnimationClip = new AnimationClip
+            {
+                name = "blank"
+            };
+
+            var toEnableAnimationClip = new AnimationClip
+            {
+                name = StateNamePhysBoneDisableSoundON,
+                frameRate = 60
+            };
+
+            var toDisableAnimationClip = new AnimationClip
+            {
+                name = StateNamePhysBoneDisableSoundOFF,
+                frameRate = 60
+            };
+
+            var path = MiscUtil.GetPathInHierarchy(physBoneOffAudioSourceGameObject.transform, ctx.AvatarRootObject.transform);
+
+            var toEnableCurve = new AnimationCurve();
+            toEnableCurve.AddKey(0, 1);
+
+            var toDisableCurve = new AnimationCurve();
+            toDisableCurve.AddKey(0, 0);
+
+            toEnableAnimationClip.SetCurve(path, typeof(GameObject), "m_IsActive", toEnableCurve);
+            toDisableAnimationClip.SetCurve(path, typeof(GameObject), "m_IsActive", toDisableCurve);
+
+            var initialState = layer.stateMachine.AddState("Initial State", new Vector3(-20, 60, 0));
+            initialState.writeDefaultValues = false;
+            initialState.motion = blankAnimationClip;
+
+            var physBoneDisableSoundOnState = layer.stateMachine.AddState(StateNamePhysBoneDisableSoundON, new Vector3(220, 60, 0));
+            physBoneDisableSoundOnState.motion = toEnableAnimationClip;
+
+            AnimatorTransitionUtil.AddTransition(initialState, physBoneDisableSoundOnState)
+                .If(VRCParameters.IS_LOCAL)
+                .If(PhysBonesSwitcherParameters.PhysBonesOff)
+                .SetImmediateTransitionSettings();
+
+            var physBoneDisableSoundOffState = layer.stateMachine.AddState(StateNamePhysBoneDisableSoundOFF, new Vector3(-20, 140, 0));
+            physBoneDisableSoundOffState.motion = toDisableAnimationClip;
+
+            AnimatorTransitionUtil.AddTransition(initialState, physBoneDisableSoundOffState)
+                .If(VRCParameters.IS_LOCAL)
+                .IfNot(PhysBonesSwitcherParameters.PhysBonesOff)
+                .SetImmediateTransitionSettings();
+
+            AnimatorTransitionUtil.AddTransition(physBoneDisableSoundOnState, physBoneDisableSoundOffState)
+                .IfNot(PhysBonesSwitcherParameters.PhysBonesOff)
+                .SetImmediateTransitionSettings();
+
+            AnimatorTransitionUtil.AddTransition(physBoneDisableSoundOffState, physBoneDisableSoundOnState)
+                .If(PhysBonesSwitcherParameters.PhysBonesOff)
+                .SetImmediateTransitionSettings();
+
+            return layer;
+        }
+
+        private VRCAvatarParameterDriver GenerateVRCAvatarParameterLocalSetDriver(string parameterName, float value)
+        {
+            return new VRCAvatarParameterDriver
+            {
+                localOnly = true,
+                parameters = new List<VRC_AvatarParameterDriver.Parameter>
+                {
+                    new VRC_AvatarParameterDriver.Parameter
+                    {
+                        type = VRC_AvatarParameterDriver.ChangeType.Set,
+                        name = parameterName,
+                        value = value,
+                    }
+                }
+            };
         }
     }
 }

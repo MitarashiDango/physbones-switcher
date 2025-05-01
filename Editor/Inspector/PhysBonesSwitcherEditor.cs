@@ -15,6 +15,20 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
 
             LanguagePrefs.ApplyFontPreferences(root);
 
+            root.Add(new PropertyField
+            {
+                bindingPath = "physBoneOffAudioClip",
+                label = "無効化時の効果音"
+            });
+
+            root.Add(new HelpBox("効果音として指定する AudioClip は Load In Background を true に設定する必要があります", HelpBoxMessageType.Info));
+
+            root.Add(new PropertyField
+            {
+                bindingPath = "customDelayTime",
+                label = "カスタム遅延時間(秒)"
+            });
+
             root.Add(CreateExcludeObjectSettingsListView());
 
             return root;
