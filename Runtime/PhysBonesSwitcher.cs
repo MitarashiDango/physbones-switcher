@@ -22,5 +22,10 @@ namespace MitarashiDango.PhysBonesSwitcher.Runtime
         /// PhysBone無効化時の効果音
         /// </summary>
         public AudioClip physBoneOffAudioClip = null;
+
+        /// <summary>
+        /// Write Defaults 設定
+        /// </summary>
+        public WriteDefaultsMode writeDefaultsMode = WriteDefaultsMode.MatchAvatarWriteDefaults;
     }
 }
