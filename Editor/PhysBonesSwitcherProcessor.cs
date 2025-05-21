@@ -745,19 +745,19 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
 
         private VRCAvatarParameterDriver GenerateVRCAvatarParameterLocalSetDriver(string parameterName, float value)
         {
-            return new VRCAvatarParameterDriver
+            var vrcAvatarParameterDriver = ScriptableObject.CreateInstance<VRCAvatarParameterDriver>();
+            vrcAvatarParameterDriver.localOnly = true;
+            vrcAvatarParameterDriver.parameters = new List<VRC_AvatarParameterDriver.Parameter>
             {
-                localOnly = true,
-                parameters = new List<VRC_AvatarParameterDriver.Parameter>
+                new VRC_AvatarParameterDriver.Parameter
                 {
-                    new VRC_AvatarParameterDriver.Parameter
-                    {
-                        type = VRC_AvatarParameterDriver.ChangeType.Set,
-                        name = parameterName,
-                        value = value,
-                    }
+                    type = VRC_AvatarParameterDriver.ChangeType.Set,
+                    name = parameterName,
+                    value = value,
                 }
             };
+
+            return vrcAvatarParameterDriver;
         }
     }
 }
