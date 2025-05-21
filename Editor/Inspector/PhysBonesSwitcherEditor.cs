@@ -29,6 +29,13 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 label = "カスタム遅延時間(秒)"
             });
 
+            root.Add(new EnumField
+            {
+                bindingPath = "writeDefaultsMode",
+                label = "Write Defaults 設定",
+                style = { flexGrow = 1 },
+            });
+
             root.Add(CreateExcludeObjectSettingsListView());
 
             return root;

@@ -37,6 +37,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             state.excludeObjectSettings = physBonesSwitcher.excludeObjectSettings;
             state.customDelayTime = physBonesSwitcher.customDelayTime;
             state.physBoneOffAudioClip = physBonesSwitcher.physBoneOffAudioClip;
+            state.writeDefaultsMode = physBonesSwitcher.writeDefaultsMode;
 #if AVATAR_OPTIMIZER
             state.NeedOptimizingPhaseProcessing = true;
 #endif
@@ -61,7 +62,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             mergeAnimator.animator = animatorController;
             mergeAnimator.layerType = AnimLayerType.FX;
             mergeAnimator.pathMode = MergeAnimatorPathMode.Absolute;
-            mergeAnimator.matchAvatarWriteDefaults = true;
+            mergeAnimator.matchAvatarWriteDefaults = physBonesSwitcher.writeDefaultsMode == Runtime.WriteDefaultsMode.MatchAvatarWriteDefaults;
 
             Object.DestroyImmediate(physBonesSwitcher);
         }
@@ -519,11 +520,11 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             };
 
             var initialState = layer.stateMachine.AddState("Initial State", new Vector3(-20, 60, 0));
-            initialState.writeDefaultValues = false;
+            initialState.writeDefaultValues = state.writeDefaultsMode == Runtime.WriteDefaultsMode.WriteDefaultsOn;
             initialState.motion = blankAnimationClip;
 
             var setPhysBoneOnState = layer.stateMachine.AddState("Set PhysBone ON", new Vector3(220, 60, 0));
-            setPhysBoneOnState.writeDefaultValues = false;
+            setPhysBoneOnState.writeDefaultValues = state.writeDefaultsMode == Runtime.WriteDefaultsMode.WriteDefaultsOn;
             setPhysBoneOnState.motion = blankAnimationClip;
             setPhysBoneOnState.behaviours = new StateMachineBehaviour[]
             {
@@ -541,7 +542,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 .SetImmediateTransitionSettings();
 
             var setPhysBoneOffState = layer.stateMachine.AddState("Set PhysBone OFF", new Vector3(-20, 140, 0));
-            setPhysBoneOffState.writeDefaultValues = false;
+            setPhysBoneOffState.writeDefaultValues = state.writeDefaultsMode == Runtime.WriteDefaultsMode.WriteDefaultsOn;
             setPhysBoneOffState.motion = blankAnimationClip;
             setPhysBoneOffState.behaviours = new StateMachineBehaviour[]
             {
@@ -576,7 +577,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             AnimationUtility.SetEditorCurve(sleepAnimationClip, dummyBinding, dummyCurve);
 
             var sleepState = layer.stateMachine.AddState("Sleep", new Vector3(220, 140, 0));
-            sleepState.writeDefaultValues = false;
+            sleepState.writeDefaultValues = state.writeDefaultsMode == Runtime.WriteDefaultsMode.WriteDefaultsOn;
             sleepState.motion = sleepAnimationClip;
 
             AnimatorTransitionUtil.AddTransition(setPhysBoneOnState, sleepState)
@@ -617,6 +618,8 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
 
         private AnimatorControllerLayer GeneratePhysBonesSwitcherLayer(BuildContext ctx)
         {
+            var state = ctx.GetState<PhysBonesSwitcherState>();
+
             var layer = new AnimatorControllerLayer
             {
                 name = LayerNamePbsPhysBonesSwitcher,
@@ -631,10 +634,11 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             var (blankAnimationClip, toEnableAnimationClip, toDisableAnimationClip) = GenerateAnimationClips(ctx);
 
             var initialState = layer.stateMachine.AddState("Initial State", new Vector3(-20, 60, 0));
-            initialState.writeDefaultValues = false;
+            initialState.writeDefaultValues = state.writeDefaultsMode == Runtime.WriteDefaultsMode.WriteDefaultsOn;
             initialState.motion = blankAnimationClip;
 
             var physBonesOnState = layer.stateMachine.AddState(StateNamePhysBonesON, new Vector3(220, 60, 0));
+            physBonesOnState.writeDefaultValues = state.writeDefaultsMode == Runtime.WriteDefaultsMode.WriteDefaultsOn;
             physBonesOnState.motion = toEnableAnimationClip;
 
             AnimatorTransitionUtil.AddTransition(initialState, physBonesOnState)
@@ -642,6 +646,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 .SetImmediateTransitionSettings();
 
             var physBonesOffState = layer.stateMachine.AddState(StateNamePhysBonesOFF, new Vector3(-20, 140, 0));
+            physBonesOffState.writeDefaultValues = state.writeDefaultsMode == Runtime.WriteDefaultsMode.WriteDefaultsOn;
             physBonesOffState.motion = toDisableAnimationClip;
 
             AnimatorTransitionUtil.AddTransition(initialState, physBonesOffState)
@@ -707,10 +712,11 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             toDisableAnimationClip.SetCurve(path, typeof(GameObject), "m_IsActive", toDisableCurve);
 
             var initialState = layer.stateMachine.AddState("Initial State", new Vector3(-20, 60, 0));
-            initialState.writeDefaultValues = false;
+            initialState.writeDefaultValues = state.writeDefaultsMode == Runtime.WriteDefaultsMode.WriteDefaultsOn;
             initialState.motion = blankAnimationClip;
 
             var physBoneDisableSoundOnState = layer.stateMachine.AddState(StateNamePhysBoneDisableSoundON, new Vector3(220, 60, 0));
+            physBoneDisableSoundOnState.writeDefaultValues = state.writeDefaultsMode == Runtime.WriteDefaultsMode.WriteDefaultsOn;
             physBoneDisableSoundOnState.motion = toEnableAnimationClip;
 
             AnimatorTransitionUtil.AddTransition(initialState, physBoneDisableSoundOnState)
@@ -719,6 +725,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 .SetImmediateTransitionSettings();
 
             var physBoneDisableSoundOffState = layer.stateMachine.AddState(StateNamePhysBoneDisableSoundOFF, new Vector3(-20, 140, 0));
+            physBoneDisableSoundOffState.writeDefaultValues = state.writeDefaultsMode == Runtime.WriteDefaultsMode.WriteDefaultsOn;
             physBoneDisableSoundOffState.motion = toDisableAnimationClip;
 
             AnimatorTransitionUtil.AddTransition(initialState, physBoneDisableSoundOffState)

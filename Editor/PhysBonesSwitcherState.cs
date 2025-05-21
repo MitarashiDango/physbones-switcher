@@ -10,5 +10,6 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
         public List<ExcludeObjectSetting> excludeObjectSettings { get; set; }
         public int customDelayTime { get; set; }
         public AudioClip physBoneOffAudioClip { get; set; }
+        public WriteDefaultsMode writeDefaultsMode { get; set; }
     }
 }
