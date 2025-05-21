@@ -8,13 +8,19 @@ namespace MitarashiDango.PhysBonesSwitcher.Runtime
     [AddComponentMenu("PhysBones Switcher/PhysBones Switcher")]
     public class PhysBonesSwitcher : MonoBehaviour, IEditorOnly
     {
-        [SerializeField]
+        /// <summary>
+        /// 制御対象外オブジェクト設定
+        /// </summary>
         public List<ExcludeObjectSetting> excludeObjectSettings = new List<ExcludeObjectSetting>();
 
-        [SerializeField]
+        /// <summary>
+        /// カスタム遅延時間（秒）
+        /// </summary>
         public int customDelayTime = 0;
 
-        [SerializeField]
+        /// <summary>
+        /// PhysBone無効化時の効果音
+        /// </summary>
         public AudioClip physBoneOffAudioClip = null;
     }
 }
