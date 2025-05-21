@@ -134,7 +134,6 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
         {
             var mergedAnimationClip = new AnimationClip()
             {
-                events = animationClip1.events,
                 frameRate = animationClip1.frameRate,
                 hideFlags = animationClip1.hideFlags,
                 legacy = animationClip1.legacy,
