@@ -8,6 +8,8 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
         public static readonly string PhysBonesOffMenuItemOn = "PBS_PhysBonesOffMenuItemOn";
         public static readonly string PhysBonesOff = "PBS_PhysBonesOff";
         public static readonly string DelayType = "PBS_DelayType";
+        public static readonly string VehicleMode = "PBS_VehicleMode";
+        public static readonly string VehicleModeDelayType = "PBS_VehicleModeDelayType";
 
         public List<ParameterConfig> GetParameterConfigs()
         {
@@ -32,6 +34,22 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 new ParameterConfig
                 {
                     nameOrPrefix = DelayType,
+                    defaultValue = 0,
+                    syncType = ParameterSyncType.Int,
+                    saved = true,
+                    localOnly = true,
+                },
+                new ParameterConfig
+                {
+                    nameOrPrefix = VehicleMode,
+                    defaultValue = 0,
+                    syncType = ParameterSyncType.Bool,
+                    saved = false,
+                    localOnly = true,
+                },
+                new ParameterConfig
+                {
+                    nameOrPrefix = VehicleModeDelayType,
                     defaultValue = 0,
                     syncType = ParameterSyncType.Int,
                     saved = true,

@@ -200,7 +200,9 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             menuItem.MenuSource = SubmenuSource.Children;
 
             AddTogglePhysBonesMenuItem(physBonesSwitcher.gameObject);
-            AddDelaySettingsSubMenuItem(ctx, physBonesSwitcher.gameObject);
+            AddVehicleModeToggleMenuItem(ctx, physBonesSwitcher.gameObject);
+            AddDelayTypeMenuItems(ctx, "Delay Settings", PhysBonesSwitcherParameters.DelayType, physBonesSwitcher.gameObject);
+            AddDelayTypeMenuItems(ctx, "Vehicle Mode Delay Settings", PhysBonesSwitcherParameters.VehicleModeDelayType, physBonesSwitcher.gameObject);
         }
 
         private GameObject AddTogglePhysBonesMenuItem(GameObject parentObject)
@@ -220,10 +222,10 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             return go;
         }
 
-        private GameObject AddDelaySettingsSubMenuItem(BuildContext ctx, GameObject parentObject)
+        private void AddDelayTypeMenuItems(BuildContext ctx, string subMenuItemName, string parameterName, GameObject parentObject)
         {
             var state = ctx.GetState<PhysBonesSwitcherState>();
-            var delaySettingsGameObject = new GameObject("Delay Settings");
+            var delaySettingsGameObject = new GameObject(subMenuItemName);
 
             var delaySettingsMenuItem = delaySettingsGameObject.AddComponent<ModularAvatarMenuItem>();
             delaySettingsMenuItem.Control.type = VRCExpressionsMenu.Control.ControlType.SubMenu;
@@ -239,7 +241,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             immediateMenuItem.Control.type = VRCExpressionsMenu.Control.ControlType.Toggle;
             immediateMenuItem.Control.parameter = new VRCExpressionsMenu.Control.Parameter
             {
-                name = PhysBonesSwitcherParameters.DelayType,
+                name = parameterName,
             };
             immediateMenuItem.Control.value = 0;
             immediateMenuGameObject.transform.SetParent(delaySettingsGameObject.transform);
@@ -252,14 +254,27 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 toggleMenuItem.Control.type = VRCExpressionsMenu.Control.ControlType.Toggle;
                 toggleMenuItem.Control.parameter = new VRCExpressionsMenu.Control.Parameter
                 {
-                    name = PhysBonesSwitcherParameters.DelayType,
+                    name = parameterName,
                 };
                 toggleMenuItem.Control.value = index + 1;
 
                 toggleMenuGameObject.transform.SetParent(delaySettingsGameObject.transform);
             }
+        }
 
-            return delaySettingsGameObject;
+        private void AddVehicleModeToggleMenuItem(BuildContext ctx, GameObject parentObject)
+        {
+            var menuItemObject = new GameObject("Vehicle Mode");
+
+            var menuItem = menuItemObject.AddComponent<ModularAvatarMenuItem>();
+            menuItem.Control.type = VRCExpressionsMenu.Control.ControlType.Toggle;
+            menuItem.Control.parameter = new VRCExpressionsMenu.Control.Parameter
+            {
+                name = PhysBonesSwitcherParameters.VehicleMode,
+            };
+            menuItem.Control.value = 1;
+
+            menuItemObject.transform.SetParent(parentObject.transform);
         }
 
         private List<int> GetDelayOptionChoices(int customDelayTime)
@@ -297,7 +312,27 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                         defaultInt = 0,
                     },
                     new AnimatorControllerParameter{
+                        name = PhysBonesSwitcherParameters.VehicleMode,
+                        type = AnimatorControllerParameterType.Bool,
+                        defaultBool = false,
+                    },
+                    new AnimatorControllerParameter{
+                        name = PhysBonesSwitcherParameters.VehicleModeDelayType,
+                        type = AnimatorControllerParameterType.Int,
+                        defaultInt = 0,
+                    },
+                    new AnimatorControllerParameter{
                         name = VRCParameters.IS_LOCAL,
+                        type = AnimatorControllerParameterType.Bool,
+                        defaultBool = false,
+                    },
+                    new AnimatorControllerParameter{
+                        name = VRCParameters.SEATED,
+                        type = AnimatorControllerParameterType.Bool,
+                        defaultBool = false,
+                    },
+                    new AnimatorControllerParameter{
+                        name = VRCParameters.IN_STATION,
                         type = AnimatorControllerParameterType.Bool,
                         defaultBool = false,
                     },
@@ -530,8 +565,26 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 GenerateVRCAvatarParameterLocalSetDriver(PhysBonesSwitcherParameters.PhysBonesOff, 0)
             };
 
+            // メニュー上でPhysBone無効化操作が行われていない場合、PhysBone ONステートへ進入する
             AnimatorTransitionUtil.AddTransition(initialState, setPhysBoneOnState)
                 .If(VRCParameters.IS_LOCAL)
+                .IfNot(PhysBonesSwitcherParameters.VehicleMode) // Vehicle Modeが無効な場合、Sit判定はしなくてよい
+                .IfNot(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)
+                .SetImmediateTransitionSettings();
+
+            // メニュー上でPhysBone無効化操作が行われておらず、Sit状態でもない場合、PhysBone ONステートへ進入する
+            AnimatorTransitionUtil.AddTransition(initialState, setPhysBoneOnState)
+                .If(VRCParameters.IS_LOCAL)
+                .If(PhysBonesSwitcherParameters.VehicleMode)
+                .IfNot(VRCParameters.IN_STATION)
+                .IfNot(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)
+                .SetImmediateTransitionSettings();
+
+            // メニュー上でPhysBone無効化操作が行われておらず、Sit状態でもない場合、PhysBone ONステートへ進入する
+            AnimatorTransitionUtil.AddTransition(initialState, setPhysBoneOnState)
+                .If(VRCParameters.IS_LOCAL)
+                .If(PhysBonesSwitcherParameters.VehicleMode)
+                .IfNot(VRCParameters.SEATED)
                 .IfNot(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)
                 .SetImmediateTransitionSettings();
 
@@ -540,7 +593,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 .IfNot(PhysBonesSwitcherParameters.PhysBonesOff)
                 .SetImmediateTransitionSettings();
 
-            var setPhysBoneOffState = layer.stateMachine.AddState("Set PhysBone OFF", new Vector3(-20, 140, 0));
+            var setPhysBoneOffState = layer.stateMachine.AddState("Set PhysBone OFF", new Vector3(220, 140, 0));
             setPhysBoneOffState.writeDefaultValues = state.writeDefaultsMode == Runtime.WriteDefaultsMode.WriteDefaultsOn;
             setPhysBoneOffState.motion = blankAnimationClip;
             setPhysBoneOffState.behaviours = new StateMachineBehaviour[]
@@ -548,6 +601,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 GenerateVRCAvatarParameterLocalSetDriver(PhysBonesSwitcherParameters.PhysBonesOff, 1)
             };
 
+            // メニュー上でPhysBone無効化操作が行われている場合、PhysBone OFFステートへ進入する
             AnimatorTransitionUtil.AddTransition(initialState, setPhysBoneOffState)
                 .If(VRCParameters.IS_LOCAL)
                 .If(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)
@@ -558,12 +612,45 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 .If(PhysBonesSwitcherParameters.PhysBonesOff)
                 .SetImmediateTransitionSettings();
 
+            // Vehicle Modeが有効な状態かつSit状態の場合、PhysBone OFFステートへ遷移する
+            AnimatorTransitionUtil.AddTransition(initialState, setPhysBoneOffState)
+                .If(VRCParameters.IS_LOCAL)
+                .If(VRCParameters.IN_STATION)
+                .If(VRCParameters.SEATED)
+                .If(PhysBonesSwitcherParameters.VehicleMode)
+                .SetImmediateTransitionSettings();
+
+            // メニュー上でPhysBone無効化操作が行われた場合、PhysBone OFFステートへ遷移する
             AnimatorTransitionUtil.AddTransition(setPhysBoneOnState, setPhysBoneOffState)
                 .If(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)
                 .Equals(PhysBonesSwitcherParameters.DelayType, 0)
                 .SetImmediateTransitionSettings();
 
+            // Vehicle Modeが有効な状態でSit状態へ変化した場合、PhysBone OFFステートへ遷移する
+            AnimatorTransitionUtil.AddTransition(setPhysBoneOnState, setPhysBoneOffState)
+                .If(VRCParameters.IN_STATION)
+                .If(VRCParameters.SEATED)
+                .If(PhysBonesSwitcherParameters.VehicleMode)
+                .Equals(PhysBonesSwitcherParameters.VehicleModeDelayType, 0)
+                .SetImmediateTransitionSettings();
+
+            // メニュー上でPhysBone無効化操作が行われていない、かつVehicle Modeが無効な場合、PhysBone ONステートへ遷移する
             AnimatorTransitionUtil.AddTransition(setPhysBoneOffState, setPhysBoneOnState)
+                .IfNot(PhysBonesSwitcherParameters.VehicleMode)
+                .IfNot(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)
+                .SetImmediateTransitionSettings();
+
+            // メニュー上でPhysBone無効化操作が行われていない、かつSit状態でなくなった場合、PhysBone ONステートへ遷移する
+            AnimatorTransitionUtil.AddTransition(setPhysBoneOffState, setPhysBoneOnState)
+                .IfNot(VRCParameters.IN_STATION)
+                .If(PhysBonesSwitcherParameters.VehicleMode)
+                .IfNot(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)
+                .SetImmediateTransitionSettings();
+
+            // メニュー上でPhysBone無効化操作が行われていない、かつSit状態でなくなった場合、PhysBone ONステートへ遷移する
+            AnimatorTransitionUtil.AddTransition(setPhysBoneOffState, setPhysBoneOnState)
+                .IfNot(VRCParameters.SEATED)
+                .If(PhysBonesSwitcherParameters.VehicleMode)
                 .IfNot(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)
                 .SetImmediateTransitionSettings();
 
@@ -575,7 +662,9 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             var dummyCurve = AnimationCurve.Constant(0, 1, 0); // 値0を1秒間維持
             AnimationUtility.SetEditorCurve(sleepAnimationClip, dummyBinding, dummyCurve);
 
-            var sleepState = layer.stateMachine.AddState("Sleep", new Vector3(220, 140, 0));
+            var choices = GetDelayOptionChoices(state.customDelayTime);
+
+            var sleepState = layer.stateMachine.AddState("Sleep", new Vector3(440, 60, 0));
             sleepState.writeDefaultValues = state.writeDefaultsMode == Runtime.WriteDefaultsMode.WriteDefaultsOn;
             sleepState.motion = sleepAnimationClip;
 
@@ -593,7 +682,6 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 .IfNot(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)
                 .SetImmediateTransitionSettings();
 
-            var choices = GetDelayOptionChoices(state.customDelayTime);
             foreach (var (choice, index) in choices.Select((c, i) => (c, i)))
             {
                 AnimatorTransitionUtil.AddTransition(sleepState, setPhysBoneOffState)
@@ -611,6 +699,62 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                         transition.orderedInterruption = true;
                     });
             }
+
+            var vehicleModeSleepState = layer.stateMachine.AddState("Sleep (Vehicle Mode)", new Vector3(440, 140, 0));
+            vehicleModeSleepState.writeDefaultValues = state.writeDefaultsMode == Runtime.WriteDefaultsMode.WriteDefaultsOn;
+            vehicleModeSleepState.motion = sleepAnimationClip;
+
+            // Vehicle Modeが有効かつ遅延時間設定ありの場合、Vehicle Mode用スリープステートへ遷移する
+            AnimatorTransitionUtil.AddTransition(setPhysBoneOnState, vehicleModeSleepState)
+                .If(VRCParameters.IN_STATION)
+                .If(VRCParameters.SEATED)
+                .If(PhysBonesSwitcherParameters.VehicleMode)
+                .IfNot(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)  // メニューでPhysBone無効化している場合は進入させない
+                .NotEqual(PhysBonesSwitcherParameters.VehicleModeDelayType, 0)
+                .SetImmediateTransitionSettings();
+
+            // 待機中に即時実行モードへ切り替えられた場合、そのままPhysBone OFfのステートへ進入する
+            AnimatorTransitionUtil.AddTransition(vehicleModeSleepState, setPhysBoneOffState)
+                .IfNot(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)
+                .Equals(PhysBonesSwitcherParameters.VehicleModeDelayType, 0)
+                .SetImmediateTransitionSettings();
+
+            // 待機中にSit状態でなくなった場合はPhysBone ONのステートへ戻る
+            AnimatorTransitionUtil.AddTransition(vehicleModeSleepState, setPhysBoneOnState)
+                .IfNot(VRCParameters.IN_STATION)
+                .SetImmediateTransitionSettings();
+
+            // 待機中にSit状態でなくなった場合はPhysBone ONのステートへ戻る
+            AnimatorTransitionUtil.AddTransition(vehicleModeSleepState, setPhysBoneOnState)
+                .IfNot(VRCParameters.SEATED)
+                .SetImmediateTransitionSettings();
+
+            // 待機中にメニューからPhysBone無効化操作が行われた場合、PhysBone ONのステートへ戻って再度メニューONの状態で遷移をやり直す
+            AnimatorTransitionUtil.AddTransition(vehicleModeSleepState, setPhysBoneOnState)
+                .If(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)
+                .SetImmediateTransitionSettings();
+
+            foreach (var (choice, index) in choices.Select((c, i) => (c, i)))
+            {
+                AnimatorTransitionUtil.AddTransition(vehicleModeSleepState, setPhysBoneOffState)
+                    .If(VRCParameters.IN_STATION)
+                    .If(VRCParameters.SEATED)
+                    .If(PhysBonesSwitcherParameters.VehicleMode)
+                    .IfNot(PhysBonesSwitcherParameters.PhysBonesOffMenuItemOn)
+                    .Equals(PhysBonesSwitcherParameters.VehicleModeDelayType, index + 1)
+                    .Exec((builder) =>
+                    {
+                        var transition = builder.Transition;
+                        transition.hasExitTime = true;
+                        transition.exitTime = choice;
+                        transition.hasFixedDuration = true;
+                        transition.duration = 0;
+                        transition.offset = 0;
+                        transition.interruptionSource = TransitionInterruptionSource.None;
+                        transition.orderedInterruption = true;
+                    });
+            }
+
 
             return layer;
         }
