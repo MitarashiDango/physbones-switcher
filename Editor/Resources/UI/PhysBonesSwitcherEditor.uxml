@@ -1,0 +1,11 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
+    <Style src="project://database/Packages/com.matcha-soft.physbones-switcher/Editor/Resources/UI/PhysBonesSwitcherEditor.uss?fileID=7433441132597879392&amp;guid=124becf2d7d45884c9cb6d25a1f7ef40&amp;type=3#PhysBonesSwitcherEditor" />
+    <uie:PropertyField binding-path="physBoneOffAudioClip" label="PhysBone 無効化時の効果音" name="physbone-off-audio-clip-property-field" />
+    <ui:VisualElement name="physbone-off-audioclip-validation-error-element" style="flex-grow: 1;">
+        <ui:HelpBox text="Load Type が Decompress On Load に設定されている Audio Clip は Load In Background を true に設定する必要があります" message-type="error" />
+        <ui:Button name="fix-physbone-off-audioclip-validation-button" text="修正する" />
+    </ui:VisualElement>
+    <uie:PropertyField binding-path="customDelayTime" label="カスタム遅延時間(秒)" />
+    <ui:EnumField label="Write Defaults 設定" type="MitarashiDango.PhysBonesSwitcher.Runtime.WriteDefaultsMode, com.matcha-soft.physbones-switcher.runtime" binding-path="writeDefaultsMode" name="write-defaults-mode-enum-field" />
+    <ui:ListView binding-path="excludeObjectSettings" reorder-mode="Animated" show-add-remove-footer="true" show-border="true" show-foldout-header="true" virtualization-method="DynamicHeight" header-title="操作対象外オブジェクト" name="exclude-object-settings-listview" />
+</ui:UXML>

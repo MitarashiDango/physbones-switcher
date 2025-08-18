@@ -1,0 +1,7 @@
+#physbone-off-audioclip-validation-error-element {
+    flex-direction: row;
+}
+
+#write-defaults-mode-enum-field {
+    flex-grow: 1;
+}
