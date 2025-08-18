@@ -6,6 +6,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Runtime
 {
     [DisallowMultipleComponent]
     [AddComponentMenu("PhysBones Switcher/PhysBones Switcher")]
+    [HelpURL("https://github.com/MitarashiDango/physbones-switcher/blob/master/docs~/components/PhysBonesSwitcher.md")]
     public class PhysBonesSwitcher : MonoBehaviour, IEditorOnly
     {
         /// <summary>
