@@ -9,7 +9,9 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
     [DisallowMultipleComponent, CustomEditor(typeof(Runtime.PhysBonesSwitcher))]
     public class PhysBonesSwitcherEditor : UnityEditor.Editor
     {
-        private VisualElement _physBoneOffAudioClipLoadInBackgroundValidationErrorElement;
+        private static string _mainUxmlGuid = "4f335a6a01861b7489b303a0f04f963b";
+
+        private VisualElement _physBoneOffAudioClipValidationErrorElement;
         private SerializedProperty _physBoneOffAudioClipProperty;
 
         private void OnEnable()
@@ -19,55 +21,25 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
 
         public override VisualElement CreateInspectorGUI()
         {
-            var root = new VisualElement();
-
-            var physBoneOffAudioClip = new PropertyField
+            var mainUxmlAsset = MiscUtil.LoadVisualTreeAsset(_mainUxmlGuid);
+            if (mainUxmlAsset == null)
             {
-                bindingPath = "physBoneOffAudioClip",
-                label = "PhysBone 無効化時の効果音",
-            };
+                Debug.LogError($"Cannot load UXML file: {_mainUxmlGuid}");
+                return null;
+            }
+
+            var root = mainUxmlAsset.CloneTree();
+
+            var physBoneOffAudioClip = root.Q<PropertyField>("physbone-off-audio-clip-property-field");
             physBoneOffAudioClip.RegisterValueChangeCallback(OnPhysBoneOffAudioClipPropertyFieldChanged);
 
-            root.Add(physBoneOffAudioClip);
+            _physBoneOffAudioClipValidationErrorElement = root.Q<VisualElement>("physbone-off-audioclip-validation-error-element");
 
-            _physBoneOffAudioClipLoadInBackgroundValidationErrorElement = new VisualElement
-            {
-                style = { flexDirection = FlexDirection.Row }
-            };
-
-            var _physBoneOffAudioClipValidationErrorHelpBox = new HelpBox
-            {
-                text = "Load Type が Decompress On Load である AudioClip は Load In Background を true に設定する必要があります",
-                messageType = HelpBoxMessageType.Error,
-            };
-
-            _physBoneOffAudioClipLoadInBackgroundValidationErrorElement.Add(_physBoneOffAudioClipValidationErrorHelpBox);
-
-            var _fixPhysBoneOffAudioClipButton = new Button
-            {
-                text = "修復する",
-            };
-
+            var _fixPhysBoneOffAudioClipButton = root.Q<Button>("fix-physbone-off-audioclip-validation-button");
             _fixPhysBoneOffAudioClipButton.RegisterCallback<ClickEvent>(OnFixPhysBoneOffAudioClipButtonClick);
 
-            _physBoneOffAudioClipLoadInBackgroundValidationErrorElement.Add(_fixPhysBoneOffAudioClipButton);
-
-            root.Add(_physBoneOffAudioClipLoadInBackgroundValidationErrorElement);
-
-            root.Add(new PropertyField
-            {
-                bindingPath = "customDelayTime",
-                label = "カスタム遅延時間(秒)"
-            });
-
-            root.Add(new EnumField
-            {
-                bindingPath = "writeDefaultsMode",
-                label = "Write Defaults 設定",
-                style = { flexGrow = 1 },
-            });
-
-            root.Add(CreateExcludeObjectSettingsListView());
+            var excludeObjectSettingsListView = root.Q<ListView>("exclude-object-settings-listview");
+            excludeObjectSettingsListView.makeItem = MakeExcludeObjectSettingsListViewItem;
 
             LanguagePrefs.ApplyFontPreferences(root);
 
@@ -76,47 +48,34 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             return root;
         }
 
-        private ListView CreateExcludeObjectSettingsListView()
+        private VisualElement MakeExcludeObjectSettingsListViewItem()
         {
-            return new ListView
+            var container = new BindableElement
             {
-                bindingPath = "excludeObjectSettings",
-                reorderMode = ListViewReorderMode.Animated,
-                showAddRemoveFooter = true,
-                showBorder = true,
-                showFoldoutHeader = true,
-                reorderable = true,
-                headerTitle = "操作対象外オブジェクト",
-                virtualizationMethod = CollectionVirtualizationMethod.DynamicHeight,
-                makeItem = () =>
-                {
-                    var container = new BindableElement { style = { flexDirection = FlexDirection.Column } };
-
-                    var objectField = new ObjectField
-                    {
-                        name = "ExcludeObject",
-                        bindingPath = "excludeObject",
-                        style = { flexGrow = 1 }
-                    };
-                    container.Add(objectField);
-
-                    var toggle = new Toggle
-                    {
-                        name = "WithChildren",
-                        bindingPath = "withChildren",
-                        text = "子オブジェクトも対象とする",
-                        style = { width = 180 }
-                    };
-                    container.Add(toggle);
-
-                    return container;
-                }
+                style = { flexDirection = FlexDirection.Column }
             };
+
+            var objectField = new ObjectField
+            {
+                bindingPath = "excludeObject",
+                style = { flexGrow = 1 }
+            };
+            container.Add(objectField);
+
+            var toggle = new Toggle
+            {
+                bindingPath = "withChildren",
+                text = "子オブジェクトも対象とする",
+                style = { width = 180 }
+            };
+            container.Add(toggle);
+
+            return container;
         }
 
         private void ValidatePhysBoneOffAudioClip()
         {
-            _physBoneOffAudioClipLoadInBackgroundValidationErrorElement.style.display = DisplayStyle.None;
+            _physBoneOffAudioClipValidationErrorElement.style.display = DisplayStyle.None;
 
             var audioClip = _physBoneOffAudioClipProperty.objectReferenceValue as AudioClip;
             if (audioClip == null)
@@ -131,7 +90,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
 
             if (audioClip.loadType == AudioClipLoadType.DecompressOnLoad && !audioClip.loadInBackground)
             {
-                _physBoneOffAudioClipLoadInBackgroundValidationErrorElement.style.display = DisplayStyle.Flex;
+                _physBoneOffAudioClipValidationErrorElement.style.display = DisplayStyle.Flex;
                 Debug.LogError("AudioClips with a Load Type of 'Decompress On Load' must have 'Load In Background' set to true.");
             }
         }
