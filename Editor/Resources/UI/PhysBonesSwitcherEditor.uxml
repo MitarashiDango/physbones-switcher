@@ -2,7 +2,7 @@
     <Style src="project://database/Packages/com.matcha-soft.physbones-switcher/Editor/Resources/UI/PhysBonesSwitcherEditor.uss?fileID=7433441132597879392&amp;guid=124becf2d7d45884c9cb6d25a1f7ef40&amp;type=3#PhysBonesSwitcherEditor" />
     <uie:PropertyField binding-path="physBoneOffAudioClip" label="PhysBone 無効化時の効果音" name="physbone-off-audio-clip-property-field" />
     <ui:VisualElement name="physbone-off-audioclip-validation-error-element" style="flex-grow: 1;">
-        <ui:HelpBox text="Load Type が Decompress On Load である AudioClip は Load In Background を true に設定する必要があります" message-type="error" />
+        <ui:HelpBox text="Load Type が Decompress On Load に設定されている Audio Clip は Load In Background を true に設定する必要があります" message-type="error" />
         <ui:Button name="fix-physbone-off-audioclip-validation-button" text="修正する" />
     </ui:VisualElement>
     <uie:PropertyField binding-path="customDelayTime" label="カスタム遅延時間(秒)" />
