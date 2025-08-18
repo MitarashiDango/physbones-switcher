@@ -1,6 +1,6 @@
 {
   "name": "com.matcha-soft.physbones-switcher",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "displayName": "PhysBones Switcher",
   "description": "アバターの PhysBone を動的にオンオフするメニューを生やすモジュール",
   "unity": "2022.3",
