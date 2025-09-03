@@ -50,7 +50,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             AddParameters(physBonesSwitcher);
             AddMenuItems(ctx, physBonesSwitcher);
 
-            SeparateVRCPhysBones(ctx);
+            SeparateVRCPhysBones(ctx, physBonesSwitcher.disablePhysBonesSeparation);
 
             var animatorController = GeneratePhysBonesSwitcherAnimatorController();
             animatorController.AddLayer(GeneratePhysBoneOffParamControllerLayer(ctx, physBonesSwitcherGameObject));
@@ -396,7 +396,8 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
         /// 1オブジェクトに複数の VRC Phys Bone が追加されている場合に複数オブジェクトに分離する
         /// </summary>
         /// <param name="ctx"></param>
-        private void SeparateVRCPhysBones(BuildContext ctx)
+        /// <param name="dryRun"></param>
+        private void SeparateVRCPhysBones(BuildContext ctx, bool dryRun)
         {
             var gameObjects = FilterExcludeObjects(ctx, GetGameObjectsWithVRCPhysBone(ctx.AvatarRootObject));
             if (gameObjects.Count == 0)
@@ -404,19 +405,21 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 return;
             }
 
+            var needsPhysBoneSeparation = false;
             foreach (var go in gameObjects)
             {
                 var physBones = go.GetComponents<VRCPhysBone>();
                 if (physBones.Length <= 1)
                 {
+                    // VRC Phys Bone コンポーネントが1つだけ追加されている場合、何もしない
                     continue;
                 }
 
-                var attachedComponentsCount = go.GetComponents<Component>().Where(c => c.GetType() != typeof(Transform)).Count();
+                // VRC Phys Bone コンポーネントが1オブジェクトに複数個存在する場合、分離処理が必要なオブジェクトとして扱う
+                needsPhysBoneSeparation = true;
 
-                if (physBones.Length == attachedComponentsCount)
+                if (dryRun)
                 {
-                    // VRC Phys Bone だけアタッチされているゲームオブジェクトの場合、何もしない
                     continue;
                 }
 
@@ -427,34 +430,10 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                     var physBonesGameObject = new GameObject($"$$PhysBones_{physBonesCount++}");
                     physBonesGameObject.transform.SetParent(go.transform);
 
-                    var type = typeof(VRCPhysBone);
                     var destPhysBone = physBonesGameObject.AddComponent<VRCPhysBone>();
 
                     // VRC Phys Bone の各種設定値をコピーする
-                    foreach (var field in type.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance))
-                    {
-                        if (field.IsDefined(typeof(System.NonSerializedAttribute), true))
-                        {
-                            continue;
-                        }
-
-                        field.SetValue(destPhysBone, field.GetValue(srcPhysBone));
-                    }
-
-                    foreach (var property in type.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance))
-                    {
-                        if (!property.CanWrite || !property.CanRead || property.Name == "name")
-                        {
-                            continue;
-                        }
-
-                        property.SetValue(destPhysBone, property.GetValue(srcPhysBone, null), null);
-                    }
-
-                    if (srcPhysBone.rootTransform == null)
-                    {
-                        destPhysBone.rootTransform = srcPhysBone.transform;
-                    }
+                    CopyVRCPhysBoneOptions(srcPhysBone, destPhysBone);
                 }
 
                 // コピー元の VRC Phys Bone は消す
@@ -462,6 +441,42 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 {
                     Object.DestroyImmediate(p);
                 }
+            }
+
+            if (dryRun && needsPhysBoneSeparation)
+            {
+                // 実際に分離処理を行わない場合、警告ログを出力する
+                Debug.LogWarning("Found VRC Phys Bone components that need to be separated into multiple objects.");
+            }
+        }
+
+        private void CopyVRCPhysBoneOptions(VRCPhysBone srcPhysBone, VRCPhysBone destPhysBone)
+        {
+            var type = typeof(VRCPhysBone);
+
+            foreach (var field in type.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance))
+            {
+                if (field.IsDefined(typeof(System.NonSerializedAttribute), true))
+                {
+                    continue;
+                }
+
+                field.SetValue(destPhysBone, field.GetValue(srcPhysBone));
+            }
+
+            foreach (var property in type.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance))
+            {
+                if (!property.CanWrite || !property.CanRead || property.Name == "name")
+                {
+                    continue;
+                }
+
+                property.SetValue(destPhysBone, property.GetValue(srcPhysBone, null), null);
+            }
+
+            if (srcPhysBone.rootTransform == null)
+            {
+                destPhysBone.rootTransform = srcPhysBone.transform;
             }
         }
 
