@@ -8,4 +8,5 @@
     <uie:PropertyField binding-path="customDelayTime" label="カスタム遅延時間(秒)" />
     <ui:EnumField label="Write Defaults 設定" type="MitarashiDango.PhysBonesSwitcher.Runtime.WriteDefaultsMode, com.matcha-soft.physbones-switcher.runtime" binding-path="writeDefaultsMode" name="write-defaults-mode-enum-field" />
     <ui:ListView binding-path="excludeObjectSettings" reorder-mode="Animated" show-add-remove-footer="true" show-border="true" show-foldout-header="true" virtualization-method="DynamicHeight" header-title="操作対象外オブジェクト" name="exclude-object-settings-listview" />
+    <ui:Toggle name="disable-phys-bones-separation-toggle" binding-path="disablePhysBonesSeparation" text="PhysBone の自動分離処理を無効化する" />
 </ui:UXML>

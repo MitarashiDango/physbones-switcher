@@ -28,5 +28,10 @@ namespace MitarashiDango.PhysBonesSwitcher.Runtime
         /// Write Defaults 設定
         /// </summary>
         public WriteDefaultsMode writeDefaultsMode = WriteDefaultsMode.MatchAvatarWriteDefaults;
+
+        /// <summary>
+        /// PhysBoneの自動分離処理を無効化する
+        /// </summary>
+        public bool disablePhysBonesSeparation = false;
     }
 }
