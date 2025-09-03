@@ -16,12 +16,10 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 .BeforePlugin("nadena.dev.modular-avatar")
                 .Run("Run PhysBones Switcher Processes (Generating Phase)", ctx => GeneratingPhaseProcess(ctx));
 
-#if AVATAR_OPTIMIZER
-            // VRC PhysBone の走査は Avatar Optimizer によるの最適化後に実行する
+            // VRC Phys Bone の走査は Avatar Optimizer による最適化後に実行する
             InPhase(BuildPhase.Optimizing)
                 .AfterPlugin("com.anatawa12.avatar-optimizer")
                 .Run("Run PhysBones Switcher Processes (Optimizing Phase)", ctx => OptimizingPhaseProcess(ctx));
-#endif
         }
 
         private void GeneratingPhaseProcess(BuildContext ctx)
