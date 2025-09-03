@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using nadena.dev.modular_avatar.core;
 using nadena.dev.ndmf;
+using nadena.dev.ndmf.vrchat;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -78,7 +79,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
 #if AVATAR_OPTIMIZER
             var (blankAnimationClip, toEnableAnimationClip, toDisableAnimationClip) = GenerateAnimationClips(ctx);
 
-            var baseAnimationLayers = ctx.AvatarDescriptor.baseAnimationLayers;
+            var baseAnimationLayers = ctx.VRChatAvatarDescriptor().baseAnimationLayers;
             foreach (var customAnimationLayer in baseAnimationLayers)
             {
                 if (customAnimationLayer.type != AnimLayerType.FX)
