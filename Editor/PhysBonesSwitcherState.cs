@@ -6,7 +6,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
 {
     public class PhysBonesSwitcherState
     {
-        public bool NeedOptimizingPhaseProcessing { get; set; }
+        public bool deferPhysBonesControlAnimationGeneration { get; set; }
         public List<ExcludeObjectSetting> excludeObjectSettings { get; set; }
         public int customDelayTime { get; set; }
         public AudioClip physBoneOffAudioClip { get; set; }
