@@ -39,10 +39,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             state.customDelayTime = physBonesSwitcher.customDelayTime;
             state.physBoneOffAudioClip = physBonesSwitcher.physBoneOffAudioClip;
             state.writeDefaultsMode = physBonesSwitcher.writeDefaultsMode;
-
-#if AVATAR_OPTIMIZER
-            state.deferPhysBonesControlAnimationGeneration = true;
-#endif
+            state.deferPhysBonesControlAnimationGeneration = physBonesSwitcher.generatePhysBoneAnimationsInOptimizingPhase;
 
             var physBonesSwitcherGameObject = CreatePhysBonesSwitcherGameObject(ctx);
             var physBoneOffAudioSourceGameObject = AddPhysBoneDisableAudioSource(ctx, physBonesSwitcherGameObject);
