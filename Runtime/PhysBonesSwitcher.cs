@@ -33,5 +33,10 @@ namespace MitarashiDango.PhysBonesSwitcher.Runtime
         /// PhysBoneの自動分離処理を無効化する
         /// </summary>
         public bool disablePhysBonesSeparation = false;
+
+        /// <summary>
+        /// VRC Phys Bone コンポーネントを操作するアニメーションを Optimizing Phase で生成するかどうか
+        /// </summary>
+        public bool generatePhysBoneAnimationsInOptimizingPhase = false;
     }
 }
