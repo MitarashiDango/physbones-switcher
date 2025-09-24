@@ -10,5 +10,6 @@
     <ui:ListView binding-path="excludeObjectSettings" reorder-mode="Animated" show-add-remove-footer="true" show-border="true" show-foldout-header="true" virtualization-method="DynamicHeight" header-title="操作対象外オブジェクト" name="exclude-object-settings-listview" />
     <ui:Toggle name="disable-phys-bones-separation-toggle" binding-path="disablePhysBonesSeparation" text="PhysBone の自動分離処理を無効化する" />
     <ui:Toggle name="generate-phys-bone-animations-in-optimizing-phase-toggle" binding-path="generatePhysBoneAnimationsInOptimizingPhase" text="PhysBone 操作アニメーションの生成を Optimizing Phase で行う" />
+    <ui:Toggle binding-path="vehicleModeSaved" text="Vehicle Mode の設定値を保存する" />
     <ui:HelpBox text="VRC Phys Bone コンポーネントの追加・削除を行う他の拡張機能と併用する場合、操作アニメーションの生成を Optimizing Phase で行う必要があります" message-type="info" />
 </ui:UXML>

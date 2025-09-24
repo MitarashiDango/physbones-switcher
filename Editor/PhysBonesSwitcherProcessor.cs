@@ -204,7 +204,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
         {
             var parameters = new PhysBonesSwitcherParameters();
             var modularAvatarParameters = physBonesSwitcher.gameObject.AddComponent<ModularAvatarParameters>();
-            modularAvatarParameters.parameters = parameters.GetParameterConfigs();
+            modularAvatarParameters.parameters = parameters.GetParameterConfigs(physBonesSwitcher.vehicleModeSaved);
         }
 
         private void AddMenuItems(BuildContext ctx, Runtime.PhysBonesSwitcher physBonesSwitcher)
