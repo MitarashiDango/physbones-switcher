@@ -38,5 +38,10 @@ namespace MitarashiDango.PhysBonesSwitcher.Runtime
         /// VRC Phys Bone コンポーネントを操作するアニメーションを Optimizing Phase で生成するかどうか
         /// </summary>
         public bool generatePhysBoneAnimationsInOptimizingPhase = false;
+
+        /// <summary>
+        /// Vehicle Mode の設定値を保存するかどうか
+        /// </summary>
+        public bool vehicleModeSaved = false;
     }
 }

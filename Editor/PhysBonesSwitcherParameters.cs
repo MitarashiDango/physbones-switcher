@@ -11,7 +11,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
         public static readonly string VehicleMode = "PBS_VehicleMode";
         public static readonly string VehicleModeDelayType = "PBS_VehicleModeDelayType";
 
-        public List<ParameterConfig> GetParameterConfigs()
+        public List<ParameterConfig> GetParameterConfigs(bool vehicleModeSaved)
         {
             var parameterConfigs = new List<ParameterConfig>
             {
@@ -44,7 +44,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                     nameOrPrefix = VehicleMode,
                     defaultValue = 0,
                     syncType = ParameterSyncType.Bool,
-                    saved = false,
+                    saved = vehicleModeSaved,
                     localOnly = true,
                 },
                 new ParameterConfig
