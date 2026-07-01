@@ -51,7 +51,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
 
             var animatorController = GeneratePhysBonesSwitcherAnimatorController();
             animatorController.AddLayer(GeneratePhysBoneOffParamControllerLayer(ctx, physBonesSwitcherGameObject));
-            animatorController.AddLayer(GeneratePhysBonesSwitcherLayer(ctx, state.deferPhysBonesControlAnimationGeneration));
+            animatorController.AddLayer(GeneratePhysBonesSwitcherLayer(ctx));
             if (physBoneOffAudioSourceGameObject != null)
             {
                 animatorController.AddLayer(GeneratePhysBoneDisableSoundLayer(ctx, physBoneOffAudioSourceGameObject));
@@ -74,7 +74,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 return;
             }
 
-            var (blankAnimationClip, toEnableAnimationClip, toDisableAnimationClip) = GenerateAnimationClips(ctx, false);
+            var (blankAnimationClip, toEnableAnimationClip, toDisableAnimationClip) = GenerateAnimationClips(ctx);
 
             var baseAnimationLayers = ctx.VRChatAvatarDescriptor().baseAnimationLayers;
             foreach (var customAnimationLayer in baseAnimationLayers)
@@ -523,7 +523,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             return go;
         }
 
-        private (AnimationClip, AnimationClip, AnimationClip) GenerateAnimationClips(BuildContext ctx, bool generateDummyAnimations)
+        private (AnimationClip, AnimationClip, AnimationClip) GenerateAnimationClips(BuildContext ctx)
         {
             var vrcPhysBones = ctx.AvatarRootObject.GetComponentsInChildren<VRCPhysBone>();
 
@@ -543,21 +543,6 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 name = StateNamePhysBonesOFF,
                 frameRate = 60
             };
-
-            if (generateDummyAnimations)
-            {
-                // ダミーのアニメーションを生成する
-                var toEnableCurve = new AnimationCurve();
-                toEnableCurve.AddKey(0, 1);
-
-                var toDisableCurve = new AnimationCurve();
-                toDisableCurve.AddKey(0, 0);
-
-                toEnableAnimationClip.SetCurve("Body", typeof(GameObject), "m_IsActive", toEnableCurve);
-                toDisableAnimationClip.SetCurve("Body", typeof(GameObject), "m_IsActive", toDisableCurve);
-
-                return (blankAnimationClip, toEnableAnimationClip, toDisableAnimationClip);
-            }
 
             var physBonesAttachedObjects = vrcPhysBones
                 .Select(vrcPhysBone => vrcPhysBone.gameObject)
@@ -808,7 +793,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             return layer;
         }
 
-        private AnimatorControllerLayer GeneratePhysBonesSwitcherLayer(BuildContext ctx, bool generateDummyAnimations)
+        private AnimatorControllerLayer GeneratePhysBonesSwitcherLayer(BuildContext ctx)
         {
             var state = ctx.GetState<PhysBonesSwitcherState>();
 
@@ -823,7 +808,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             layer.stateMachine.exitPosition = new Vector3(0, -40, 0);
             layer.stateMachine.anyStatePosition = new Vector3(0, -80, 0);
 
-            var (blankAnimationClip, toEnableAnimationClip, toDisableAnimationClip) = GenerateAnimationClips(ctx, generateDummyAnimations);
+            var (blankAnimationClip, toEnableAnimationClip, toDisableAnimationClip) = GenerateAnimationClips(ctx);
 
             var initialState = layer.stateMachine.AddState("Initial State", new Vector3(-20, 60, 0));
             initialState.writeDefaultValues = state.writeDefaultsMode == Runtime.WriteDefaultsMode.WriteDefaultsOn;
