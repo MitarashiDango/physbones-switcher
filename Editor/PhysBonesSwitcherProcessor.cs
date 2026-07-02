@@ -51,11 +51,30 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
 
             var animatorController = GeneratePhysBonesSwitcherAnimatorController();
             animatorController.AddLayer(GeneratePhysBoneOffParamControllerLayer(ctx, physBonesSwitcherGameObject));
-            animatorController.AddLayer(GeneratePhysBonesSwitcherLayer(ctx));
+            animatorController.AddLayer(GeneratePhysBonesSwitcherLayer(ctx, state.deferPhysBonesControlAnimationGeneration));
             if (physBoneOffAudioSourceGameObject != null)
             {
                 animatorController.AddLayer(GeneratePhysBoneDisableSoundLayer(ctx, physBoneOffAudioSourceGameObject));
             }
+
+#if AVATAR_OPTIMIZER
+            var aaoMarker = ctx.AvatarRootObject.AddComponent<Runtime.PhysBonesSwitcherAAOMarker>();
+            aaoMarker.controlledPhysBoneRoots = GetTargetPhysBonesAttachedObjects(ctx)
+                .Select(o =>
+                {
+                    var pb = o.GetComponent<VRCPhysBone>();
+                    if (pb == null)
+                    {
+                        return null;
+                    }
+
+                    return pb.rootTransform != null ? pb.rootTransform : o.transform;
+                })
+                .Where(t => t != null)
+                .ToList();
+            aaoMarker.avatarRoot = ctx.AvatarRootTransform;
+            aaoMarker.excludedPhysBones = GetExcludedPhysBones(ctx);
+#endif
 
             var mergeAnimator = physBonesSwitcher.gameObject.AddComponent<ModularAvatarMergeAnimator>();
             mergeAnimator.animator = animatorController;
@@ -68,13 +87,21 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
 
         public void OptimizingProcess(BuildContext ctx)
         {
+#if AVATAR_OPTIMIZER
+            var aaoMarker = ctx.AvatarRootObject.GetComponent<Runtime.PhysBonesSwitcherAAOMarker>();
+            if (aaoMarker != null)
+            {
+                Object.DestroyImmediate(aaoMarker);
+            }
+#endif
+
             var state = ctx.GetState<PhysBonesSwitcherState>();
             if (!state.deferPhysBonesControlAnimationGeneration)
             {
                 return;
             }
 
-            var (blankAnimationClip, toEnableAnimationClip, toDisableAnimationClip) = GenerateAnimationClips(ctx);
+            var (blankAnimationClip, toEnableAnimationClip, toDisableAnimationClip) = GenerateAnimationClips(ctx, false);
 
             var baseAnimationLayers = ctx.VRChatAvatarDescriptor().baseAnimationLayers;
             foreach (var customAnimationLayer in baseAnimationLayers)
@@ -137,6 +164,61 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                     }).ToArray();
                 }
             }
+        }
+
+        private static List<VRCPhysBone> GetExcludedPhysBones(BuildContext ctx)
+        {
+            var state = ctx.GetState<PhysBonesSwitcherState>();
+
+            var excludeObjectSettings = (state.excludeObjectSettings ?? new List<Runtime.ExcludeObjectSetting>())
+                .Where(setting => setting?.excludeObject != null)
+                .ToList();
+
+            if (excludeObjectSettings.Count == 0)
+            {
+                return new List<VRCPhysBone>();
+            }
+
+            return ctx.AvatarRootObject
+                .GetComponentsInChildren<VRCPhysBone>(true)
+                .Where(physBone => physBone != null)
+                .Where(physBone => physBone.gameObject.tag != EditorOnly)
+                .Where(physBone => IsExcludedPhysBone(physBone, excludeObjectSettings))
+                .Distinct()
+                .ToList();
+        }
+
+        private static bool IsExcludedPhysBone(
+            VRCPhysBone physBone,
+            IReadOnlyList<Runtime.ExcludeObjectSetting> excludeObjectSettings)
+        {
+            var physBoneObject = physBone.gameObject;
+
+            foreach (var setting in excludeObjectSettings)
+            {
+                var excludeObject = setting.excludeObject;
+                if (excludeObject == null)
+                {
+                    continue;
+                }
+
+                if (setting.withChildren)
+                {
+                    if (physBoneObject.transform.IsChildOf(excludeObject.transform))
+                    {
+                        return true;
+                    }
+                }
+                else
+                {
+                    if (physBoneObject == excludeObject)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private AnimationClip MergeAnimationClip(AnimationClip animationClip1, AnimationClip animationClip2, bool replaceCurves, bool relpaceEvents)
@@ -376,7 +458,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             var filterdObjects = sourceObjects.Where(obj => obj.tag != EditorOnly);
 
             // 直接指定されているオブジェクトを除外
-            filterdObjects = sourceObjects.Where(
+            filterdObjects = filterdObjects.Where(
                 obj => !excludeObjectSettings.Exists(eos => eos.excludeObject == obj));
 
             // 子オブジェクトも除外対象とするオブジェクトの子オブジェクトを除外
@@ -523,10 +605,8 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             return go;
         }
 
-        private (AnimationClip, AnimationClip, AnimationClip) GenerateAnimationClips(BuildContext ctx)
+        private (AnimationClip, AnimationClip, AnimationClip) GenerateAnimationClips(BuildContext ctx, bool generateDummyAnimations)
         {
-            var vrcPhysBones = ctx.AvatarRootObject.GetComponentsInChildren<VRCPhysBone>();
-
             var blankAnimationClip = new AnimationClip
             {
                 name = "blank"
@@ -544,11 +624,12 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
                 frameRate = 60
             };
 
-            var physBonesAttachedObjects = vrcPhysBones
-                .Select(vrcPhysBone => vrcPhysBone.gameObject)
-                .Distinct();
+            if (generateDummyAnimations)
+            {
+                return (blankAnimationClip, toEnableAnimationClip, toDisableAnimationClip);
+            }
 
-            physBonesAttachedObjects = FilterExcludeObjects(ctx, physBonesAttachedObjects.ToList());
+            var physBonesAttachedObjects = GetTargetPhysBonesAttachedObjects(ctx);
 
             foreach (var physBonesAttachedObject in physBonesAttachedObjects)
             {
@@ -565,6 +646,17 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             }
 
             return (blankAnimationClip, toEnableAnimationClip, toDisableAnimationClip);
+        }
+
+        private IEnumerable<GameObject> GetTargetPhysBonesAttachedObjects(BuildContext ctx)
+        {
+            var vrcPhysBones = ctx.AvatarRootObject.GetComponentsInChildren<VRCPhysBone>();
+
+            var physBonesAttachedObjects = vrcPhysBones
+                .Select(vrcPhysBone => vrcPhysBone.gameObject)
+                .Distinct();
+
+            return FilterExcludeObjects(ctx, physBonesAttachedObjects.ToList());
         }
 
         private AnimatorControllerLayer GeneratePhysBoneOffParamControllerLayer(BuildContext ctx, GameObject physBonesSwitcherGameObject)
@@ -793,7 +885,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             return layer;
         }
 
-        private AnimatorControllerLayer GeneratePhysBonesSwitcherLayer(BuildContext ctx)
+        private AnimatorControllerLayer GeneratePhysBonesSwitcherLayer(BuildContext ctx, bool generateDummyAnimations)
         {
             var state = ctx.GetState<PhysBonesSwitcherState>();
 
@@ -808,7 +900,7 @@ namespace MitarashiDango.PhysBonesSwitcher.Editor
             layer.stateMachine.exitPosition = new Vector3(0, -40, 0);
             layer.stateMachine.anyStatePosition = new Vector3(0, -80, 0);
 
-            var (blankAnimationClip, toEnableAnimationClip, toDisableAnimationClip) = GenerateAnimationClips(ctx);
+            var (blankAnimationClip, toEnableAnimationClip, toDisableAnimationClip) = GenerateAnimationClips(ctx, generateDummyAnimations);
 
             var initialState = layer.stateMachine.AddState("Initial State", new Vector3(-20, 60, 0));
             initialState.writeDefaultValues = state.writeDefaultsMode == Runtime.WriteDefaultsMode.WriteDefaultsOn;
